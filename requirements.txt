@@ -1,0 +1,11 @@
+ipykernel
+
+# newspaper3k
+# lxml[html_clean]
+goose3
+
+# selenium
+
+waybackpy
+pandas
+tqdm
