@@ -9,3 +9,4 @@ goose3
 waybackpy
 pandas
 tqdm
+argparse
