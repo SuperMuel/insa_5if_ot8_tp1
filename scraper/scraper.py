@@ -1,6 +1,6 @@
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
-import logging
 from pathlib import Path
 
 import pandas as pd

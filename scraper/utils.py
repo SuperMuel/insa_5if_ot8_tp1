@@ -1,10 +1,11 @@
+import logging
 from functools import cache
-from bs4 import BeautifulSoup
+
 import requests
+from bs4 import BeautifulSoup
+from goose3 import Goose
 from waybackpy import WaybackMachineCDXServerAPI
 from waybackpy.exceptions import NoCDXRecordFound
-import logging
-from goose3 import Goose
 
 from .const import HTML_ATTR_IGNORE, HTML_TAG_IGNORE, USER_AGENT
 
