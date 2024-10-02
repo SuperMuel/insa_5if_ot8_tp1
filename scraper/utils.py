@@ -29,7 +29,6 @@ def fetch_html(url: str) -> str:
     return requests.get(url).text
 
 
-@cache
 def clean_html(
     html: str,
     *,
@@ -54,7 +53,6 @@ def clean_html(
     return soup
 
 
-@cache
 def extract_data(html: str) -> dict:
     g = Goose()
     article = g.extract(raw_html=html)
