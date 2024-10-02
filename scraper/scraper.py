@@ -1,5 +1,4 @@
 import logging
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 
@@ -7,16 +6,18 @@ import pandas as pd
 from tqdm import tqdm
 
 from .const import MD_FORMAT, RESULT_FILENAME, RESULT_HTML_FILENAME, RESULT_MD_FILENAME
-from .utils import clean_html, extract_data, fetch_html, get_alternate_url
+from .downloader import download_resource
+from .utils import clean_html, extract_data
+
+logger = logging.getLogger(__name__)
 
 
 def scrape_article(url: str) -> dict:
-    alternate_url = get_alternate_url(url)
-    html = fetch_html(alternate_url)
+    used_url, html = download_resource(url)
     cleaned_html = clean_html(html)
     data = extract_data(str(cleaned_html))
 
-    return dict(url=url, alternate_url=alternate_url, html=cleaned_html, **data)
+    return dict(url=url, used_url=used_url, html=cleaned_html, **data)
 
 
 def _init_files(version: str, id: str) -> tuple[Path, Path, Path]:
@@ -30,10 +31,10 @@ def _init_files(version: str, id: str) -> tuple[Path, Path, Path]:
     return result_filename, result_md_filename, html_filename
 
 
-def process_article(article_url: str) -> dict:
-    logging.info(f"Being scraping {article_url}...")
+def process_article(article_url: str, version: str | None = None) -> dict:
+    logger.info(f"Being scraping {article_url}...")
 
-    version = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    version = version if version else datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     id = article_url.replace("/", "_")
 
     result_filename, result_md_filename, html_filename = _init_files(version, id)
@@ -54,13 +55,32 @@ def process_article(article_url: str) -> dict:
     with open(html_filename, "w") as f:
         f.write(article_data["html"].prettify())
 
-    logging.info(f"Scraping of {article_url} done.")
+    logger.info(f"Scraping of {article_url} done.")
 
     return article_data
 
 
-def process_articles(article_urls: list[str]) -> list[dict]:
-    with ThreadPoolExecutor() as executor:
-        return list(
-            tqdm(executor.map(process_article, article_urls), total=len(article_urls))
-        )
+def process_articles(article_urls: list[str], *, name: str | None = None) -> list[dict]:
+    version = datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + (
+        f"_{name}" if name else ""
+    )
+
+    logger.info(f"Starting scraping of {len(article_urls)} articles for {version}...")
+
+    res = list(
+        process_article(article_url, version) for article_url in tqdm(article_urls)
+    )
+
+    logger.info(f"Scraping of {len(article_urls)} articles done.")
+
+    return res
+
+    # with ThreadPoolExecutor() as executor:
+    #     return list(
+    #         tqdm(
+    #             executor.map(
+    #                 process_article, article_urls, [version] * len(article_urls)
+    #             ),
+    #             total=len(article_urls),
+    #         )
+    #     )

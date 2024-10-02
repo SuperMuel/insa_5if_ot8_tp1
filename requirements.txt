@@ -10,3 +10,5 @@ waybackpy
 pandas
 tqdm
 argparse
+rich
+internetarchive

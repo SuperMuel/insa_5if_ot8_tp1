@@ -1,32 +1,9 @@
 import logging
-from functools import cache
 
-import requests
 from bs4 import BeautifulSoup
 from goose3 import Goose
-from waybackpy import WaybackMachineCDXServerAPI
-from waybackpy.exceptions import NoCDXRecordFound
 
-from .const import HTML_ATTR_IGNORE, HTML_TAG_IGNORE, USER_AGENT
-
-
-@cache
-def get_alternate_url(url: str, *, user_agent: str = USER_AGENT, **kwargs) -> str:
-    try:
-        cdx_api = WaybackMachineCDXServerAPI(url=url, user_agent=user_agent, **kwargs)
-        alternate_url = cdx_api.newest().archive_url
-
-        logging.info(f"Alternate URL for {url} is {alternate_url}")
-
-        return alternate_url
-    except NoCDXRecordFound:
-        logging.info(f"No alternate URL found for {url}. Using original URL.")
-        return url
-
-
-@cache
-def fetch_html(url: str) -> str:
-    return requests.get(url).text
+from .const import HTML_ATTR_IGNORE, HTML_TAG_IGNORE
 
 
 def clean_html(
