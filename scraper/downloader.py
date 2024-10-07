@@ -10,13 +10,18 @@ logger = logging.getLogger(__name__)
 
 
 class DownloaderError(Exception):
-    pass
+    should_retry: bool
+
+    def __init__(self, *args: object, should_retry: bool = True) -> None:
+        super().__init__(*args)
+        self.should_retry = should_retry
 
 
 @dataclass
 class DownloadResult:
     url: str
     content: str
+    method: str
 
 
 class Downloader(Protocol):
@@ -44,14 +49,22 @@ def internet_archive_wayback_downloader(
         resource_url = response_json["archived_snapshots"]["closest"]["url"]
     except KeyError:
         raise DownloaderError(
-            f"Could not find a snapshot for {url} on the Internet Archive."
+            f"Could not find a snapshot for {url} on the Internet Archive.",
+            should_retry=False,
         )
 
     logger.info(f"Fetching archive with {resource_url}")
 
+    try:
+        response = requests.get(resource_url)
+    except requests.ConnectionError as e:
+        time.sleep(1 ** (retry_n + 1))
+        raise DownloaderError(f"Connection error while fetching archive: {e}")
+
     return DownloadResult(
         url=resource_url,
-        content=requests.get(resource_url).text,
+        content=response.text,
+        method="archive",
     )
 
 
@@ -71,13 +84,14 @@ def selenium_downloader(url: str, *, retry_n: int, **kwargs) -> DownloadResult:
     finally:
         driver.quit()
 
-    return DownloadResult(url=url, content=page_source)
+    return DownloadResult(url=url, content=page_source, method="selenium")
 
 
 def default_downloader(url: str, *, retry_n: int, **kwargs) -> DownloadResult:
     return DownloadResult(
         url=url,
         content=requests.get(url).text,
+        method="request",
     )
 
 
@@ -104,5 +118,8 @@ def download_resource(
                 return downloader(url, retry_n=i)
             except DownloaderError as e:
                 logger.warning(f"Error downloading with '{downloader.__name__}': {e}")  # type: ignore
+
+                if not e.should_retry:
+                    break
 
     raise DownloaderError(f"No downloaders could download {url}.")

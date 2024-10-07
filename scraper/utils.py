@@ -21,6 +21,17 @@ def clean_html(
         for attr in html_attr_ignore:
             del el[attr]
 
+    while True:
+        changed = False
+
+        for el in soup.find_all():
+            if not el.get_text(strip=True) and not el.find_all():
+                el.decompose()
+                changed = True
+
+        if not changed:
+            break
+
     output_html = str(soup)
 
     logging.info(

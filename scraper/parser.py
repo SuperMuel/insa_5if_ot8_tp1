@@ -20,6 +20,18 @@ arg_parser.add_argument(
 )
 
 arg_parser.add_argument(
+    "--version",
+    type=str,
+    help="Version of the scraping result (used to continue a previous scraping)",
+)
+
+arg_parser.add_argument(
+    "--dry-run",
+    action="store_true",
+    help="Do not save any data",
+)
+
+arg_parser.add_argument(
     "--verbose",
     "-v",
     action="store_true",

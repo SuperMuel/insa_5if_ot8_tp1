@@ -25,4 +25,4 @@ else:
     arg_parser.error("Please provide either a list of URLs or a file containing URLs")
 
 
-process_articles(urls, name=name)
+process_articles(urls, name=name, version=args.version, dry_run=args.dry_run)
