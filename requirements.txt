@@ -1,14 +1,17 @@
 ipykernel
 
-# newspaper3k
-# lxml[html_clean]
+# SCRAPER
 goose3
-
 selenium
-
 waybackpy
 pandas
 tqdm
 argparse
 rich
 internetarchive
+
+# SIMILARITY
+editdistance
+scikit-learn
+ngram
+tabulate
