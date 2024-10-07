@@ -1,13 +1,10 @@
 import logging
 import time
-from typing import Callable
+from dataclasses import dataclass
+from typing import Protocol
 
 import requests
 from selenium import webdriver
-from waybackpy import WaybackMachineCDXServerAPI
-from waybackpy.exceptions import NoCDXRecordFound
-
-from .const import USER_AGENT
 
 logger = logging.getLogger(__name__)
 
@@ -16,44 +13,29 @@ class DownloaderError(Exception):
     pass
 
 
-Downloader = Callable[[str], tuple[str, str]]
+@dataclass
+class DownloadResult:
+    url: str
+    content: str
+
+
+class Downloader(Protocol):
+    def __call__(self, url: str, *, retry_n: int, **kwargs) -> DownloadResult: ...
+
 
 INTERNET_ARCHIVE_URL = "http://archive.org/wayback/available?url={url}"
 
 
-def wayback_machine_cdx_downloader(
-    url: str, *, user_agent: str = USER_AGENT, **kwargs
-) -> tuple[str, str]:
-    try:
-        cdx_api = WaybackMachineCDXServerAPI(url=url, user_agent=user_agent, **kwargs)
-        alternate_url = cdx_api.newest().archive_url
-
-        logger.info(f"Alternate URL for {url} is {alternate_url}")
-
-        return alternate_url, requests.get(url).text
-    except NoCDXRecordFound:
-        raise DownloaderError(
-            f"No alternate URL found for {url} using Wayback Machine CDX API."
-        )
-
-
 def internet_archive_wayback_downloader(
-    url: str, *, retries: int = 3
-) -> tuple[str, str]:
+    url: str, *, retry_n: int, **kwargs
+) -> DownloadResult:
     availability_url = INTERNET_ARCHIVE_URL.format(url=url)
+    logger.info(f"Checking availability with {availability_url}")
 
-    response = None
-
-    for _ in range(retries):
-        try:
-            response = requests.get(availability_url)
-            break
-        except requests.RequestException as e:
-            logger.warning(f"Error fetching {availability_url}: {e}. Retrying...")
-            continue
-
-    if not response:
-        raise DownloaderError(f"Could not fetch {availability_url}.")
+    try:
+        response = requests.get(availability_url)
+    except requests.RequestException as e:
+        raise DownloaderError(f"Error checking availability: {e}")
 
     response_json = response.json()
     logger.debug(f"Internet Archive response for {url}: {response_json}")
@@ -65,12 +47,15 @@ def internet_archive_wayback_downloader(
             f"Could not find a snapshot for {url} on the Internet Archive."
         )
 
-    logger.info(f"Fetching for {url} with {resource_url}")
+    logger.info(f"Fetching archive with {resource_url}")
 
-    return resource_url, requests.get(resource_url).text
+    return DownloadResult(
+        url=resource_url,
+        content=requests.get(resource_url).text,
+    )
 
 
-def selenium_downloader(url: str) -> tuple[str, str]:
+def selenium_downloader(url: str, *, retry_n: int, **kwargs) -> DownloadResult:
     options = webdriver.ChromeOptions()
     options.add_argument("--headless")
 
@@ -78,7 +63,7 @@ def selenium_downloader(url: str) -> tuple[str, str]:
 
     try:
         driver.get(url)
-        time.sleep(1)
+        time.sleep(1 ** (retry_n + 1))
 
         page_source = driver.page_source
     except Exception as e:
@@ -86,11 +71,14 @@ def selenium_downloader(url: str) -> tuple[str, str]:
     finally:
         driver.quit()
 
-    return url, page_source
+    return DownloadResult(url=url, content=page_source)
 
 
-def default_downloader(url: str) -> tuple[str, str]:
-    return url, requests.get(url).text
+def default_downloader(url: str, *, retry_n: int, **kwargs) -> DownloadResult:
+    return DownloadResult(
+        url=url,
+        content=requests.get(url).text,
+    )
 
 
 DOWNLOADERS: list[Downloader] = [
@@ -101,12 +89,20 @@ DOWNLOADERS: list[Downloader] = [
 
 
 def download_resource(
-    url: str, *, downloaders: list[Downloader] = DOWNLOADERS
-) -> tuple[str, str]:
+    url: str,
+    *,
+    downloaders: list[Downloader] = DOWNLOADERS,
+    retries: int = 3,
+) -> DownloadResult:
     for downloader in downloaders:
-        try:
-            return downloader(url)
-        except DownloaderError as e:
-            logger.warning(e)
+        for i in range(retries):
+            logger.info(
+                f"Downloading using '{downloader.__name__}' (attempt {i + 1})"  # type: ignore
+            )
+
+            try:
+                return downloader(url, retry_n=i)
+            except DownloaderError as e:
+                logger.warning(f"Error downloading with '{downloader.__name__}': {e}")  # type: ignore
 
     raise DownloaderError(f"No downloaders could download {url}.")

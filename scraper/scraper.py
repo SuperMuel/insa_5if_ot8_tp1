@@ -13,11 +13,11 @@ logger = logging.getLogger(__name__)
 
 
 def scrape_article(url: str) -> dict:
-    used_url, html = download_resource(url)
-    cleaned_html = clean_html(html)
+    resource = download_resource(url)
+    cleaned_html = clean_html(resource.content)
     data = extract_data(str(cleaned_html))
 
-    return dict(url=url, used_url=used_url, html=cleaned_html, **data)
+    return dict(url=url, used_url=resource.url, html=cleaned_html, **data)
 
 
 def _init_files(version: str, id: str) -> tuple[Path, Path, Path]:
@@ -57,7 +57,7 @@ def process_article(article_url: str, version: str | None = None) -> dict:
         f.write(article_data["html"].prettify())
 
     logger.info(
-        f"Saved data for {article_url} to \n\tCSV: '{result_filename}'\n\tMD: '{result_md_filename}'\n\tHTML: '{html_filename}'."
+        f"Saved data to \n\tCSV: '{result_filename}'\n\tMD: '{result_md_filename}'\n\tHTML: '{html_filename}'."
     )
     logger.info(f"Scraping of {article_url} done.")
 
