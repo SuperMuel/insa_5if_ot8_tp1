@@ -20,7 +20,7 @@ if args.urls:
 elif args.file:
     name = Path(args.file).stem
     with open(args.file) as f:
-        urls = list(filter(lambda u: u, f.readlines()))
+        urls = [u for u in f.read().splitlines() if u.strip()]
 else:
     arg_parser.error("Please provide either a list of URLs or a file containing URLs")
 
