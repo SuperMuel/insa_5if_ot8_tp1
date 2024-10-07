@@ -1,51 +1,53 @@
-from statistics import mean
-
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
-from .metrics_compute import compute_metrics_for_articles, precision
+from .metrics_compute import compute_metrics_for_articles
 from .parser import arg_parser
-from .utils import get_journal_name, print_similarity_results
+from .utils import get_journal_name
 
 args = arg_parser.parse_args()
 
-test_set_df = pd.read_csv(args.test_file)
+test_set_df = pd.read_csv(args.test_file).dropna(subset=["url"])
 scraped_df = pd.read_csv(args.source_file)
 
-merged_df = scraped_df.merge(test_set_df, on=["url"], suffixes=("_scraped", "_test"))
+merged_df = pd.merge(scraped_df, test_set_df, on="url", suffixes=("_scraped", "_test"))
 
-all_titles = (
+missing_test = test_set_df[~test_set_df["url"].isin(merged_df["url"])]
+
+if not missing_test.empty:
+    print("Missing test articles:")
+    print("\n".join(missing_test["url"].tolist()))
+
+merged_df["title_scraped"] = (
     merged_df["title_scraped"].replace(np.nan, "").replace("\n", " ", regex=True)
 )
-all_texts = merged_df["content"].replace("\n", " ", regex=True)
+merged_df["content"] = merged_df["content"].replace("\n", " ", regex=True)
+merged_df["title_test"] = (
+    merged_df["title_test"].replace("\n", " ", regex=True).tolist()
+)
+merged_df["all"] = merged_df["all"].replace("\n", " ", regex=True).tolist()
 
-journals = merged_df["url"].apply(get_journal_name).tolist()
-
-titles = merged_df["title_test"].replace("\n", " ", regex=True).tolist()
-contents = merged_df["all"].replace("\n", " ", regex=True).tolist()
+merged_df["journal"] = merged_df["url"].apply(get_journal_name).tolist()
 
 table = []
+
 final_title_scores = []
 final_text_scores = []
 
-for i in tqdm(range(len(merged_df))):
-    journal = journals[i]
-    title = titles[i]
-    content = contents[i]
+merged_df["title_similarity"] = pd.NA
+merged_df["text_similarity"] = pd.NA
 
-    final_title_scores.append(
-        compute_metrics_for_articles(
-            table, i + 1, journal, "Title", title, all_titles[i]
-        )
+for i, (row_index, row) in tqdm(enumerate(merged_df.iterrows()), total=len(merged_df)):
+    title_res = compute_metrics_for_articles(
+        "Title", row["title_test"], row["title_scraped"]
     )
-    final_text_scores.append(
-        compute_metrics_for_articles(
-            table, i + 1, journal, "Content", content, all_texts[i]
-        )
-    )
+    text_res = compute_metrics_for_articles("Content", row["all"], row["content"])
 
-print(f"Average CSS over all titles: {mean(final_title_scores):.{precision}f}")
-print(f"Average CSS over all texts: {mean(final_text_scores):.{precision}f}\n")
+    merged_df.loc[row_index, "title_similarity"] = title_res["avg_similarity"]
+    merged_df.loc[row_index, "text_similarity"] = text_res["avg_similarity"]
 
-print_similarity_results(table)
+print(merged_df[["url", "title_similarity", "text_similarity"]])
+
+print(f"Average title: {merged_df["title_similarity"].mean():.2f}")
+print(f"Average text: {merged_df['text_similarity'].mean():.2f}")

@@ -7,9 +7,7 @@ precision = 2
 threshold = 0.95
 
 
-def compute_metrics_for_articles(
-    table, article_number, journal, article_type, manual, scraped, n_title=1, n_text=1
-):
+def compute_metrics_for_articles(article_type, manual, scraped, n_title=1, n_text=1):
     ngram_similarity = (
         NGram.compare(manual, scraped, N=n_title)
         if article_type == "Title"
@@ -26,17 +24,10 @@ def compute_metrics_for_articles(
 
     mark = "X" if avg_similarity >= threshold else "-"
 
-    table.append(
-        [
-            article_number,
-            journal,
-            article_type,
-            ngram_similarity,
-            f"{edit_dist} ({edit_sim:.{precision}f})",
-            # cos_sim,
-            avg_similarity,
-            mark,
-        ]
-    )
-
-    return avg_similarity
+    return {
+        "ngram_similarity": ngram_similarity,
+        "edit_dist": edit_dist,
+        "edit_dist_sim": edit_sim,
+        "avg_similarity": avg_similarity,
+        "mark": mark,
+    }
