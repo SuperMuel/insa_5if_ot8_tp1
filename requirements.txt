@@ -4,7 +4,7 @@ ipykernel
 # lxml[html_clean]
 goose3
 
-# selenium
+selenium
 
 waybackpy
 pandas

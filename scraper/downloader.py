@@ -1,7 +1,9 @@
 import logging
+import time
 from typing import Callable
 
 import requests
+from selenium import webdriver
 from waybackpy import WaybackMachineCDXServerAPI
 from waybackpy.exceptions import NoCDXRecordFound
 
@@ -65,12 +67,32 @@ def internet_archive_wayback_downloader(
     return resource_url, requests.get(resource_url).text
 
 
+def selenium_downloader(url: str) -> tuple[str, str]:
+    options = webdriver.ChromeOptions()
+    options.add_argument("--headless")
+
+    driver = webdriver.Chrome(options=options)
+
+    try:
+        driver.get(url)
+        time.sleep(1)
+
+        page_source = driver.page_source
+    except Exception as e:
+        raise DownloaderError(f"Error downloading {url} with Selenium: {e}")
+    finally:
+        driver.quit()
+
+    return url, page_source
+
+
 def default_downloader(url: str) -> tuple[str, str]:
     return url, requests.get(url).text
 
 
 DOWNLOADERS: list[Downloader] = [
     internet_archive_wayback_downloader,
+    selenium_downloader,
     default_downloader,
 ]
 
