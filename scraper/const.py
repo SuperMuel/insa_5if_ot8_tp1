@@ -6,5 +6,5 @@ MD_FORMAT = "# {title}\n\n[URL]({url}) ([Fetched URL]({used_url}))\n\n{content}\
 
 RESULT_DIR = "results/{version}"
 RESULT_FILENAME = f"{RESULT_DIR}/results.csv"
-RESULT_MD_FILENAME = f"{RESULT_DIR}/results.md"
+RESULT_MD_FILENAME = f"{RESULT_DIR}/md/{{url}}.md"
 RESULT_HTML_FILENAME = f"{RESULT_DIR}/html/{{url}}.html"

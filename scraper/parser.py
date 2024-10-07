@@ -18,3 +18,10 @@ arg_parser.add_argument(
     dest="file",
     help="File containing URLs of articles to scrape",
 )
+
+arg_parser.add_argument(
+    "--verbose",
+    "-v",
+    action="store_true",
+    help="Print debug messages",
+)

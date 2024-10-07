@@ -56,6 +56,7 @@ def internet_archive_wayback_downloader(
         raise DownloaderError(f"Could not fetch {availability_url}.")
 
     response_json = response.json()
+    logger.debug(f"Internet Archive response for {url}: {response_json}")
 
     try:
         resource_url = response_json["archived_snapshots"]["closest"]["url"]
@@ -63,6 +64,8 @@ def internet_archive_wayback_downloader(
         raise DownloaderError(
             f"Could not find a snapshot for {url} on the Internet Archive."
         )
+
+    logger.info(f"Fetching for {url} with {resource_url}")
 
     return resource_url, requests.get(resource_url).text
 

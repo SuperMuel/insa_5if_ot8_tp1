@@ -22,10 +22,11 @@ def scrape_article(url: str) -> dict:
 
 def _init_files(version: str, id: str) -> tuple[Path, Path, Path]:
     result_filename = Path(RESULT_FILENAME.format(version=version))
-    result_md_filename = Path(RESULT_MD_FILENAME.format(version=version))
+    result_md_filename = Path(RESULT_MD_FILENAME.format(version=version, url=id))
     html_filename = Path(RESULT_HTML_FILENAME.format(version=version, url=id))
 
     result_filename.parent.mkdir(parents=True, exist_ok=True)
+    result_md_filename.parent.mkdir(parents=True, exist_ok=True)
     html_filename.parent.mkdir(parents=True, exist_ok=True)
 
     return result_filename, result_md_filename, html_filename
@@ -49,12 +50,15 @@ def process_article(article_url: str, version: str | None = None) -> dict:
         index=False,
     )
 
-    with open(result_md_filename, "a") as f:
+    with open(result_md_filename, "w") as f:
         f.write(MD_FORMAT.format(**article_data))
 
     with open(html_filename, "w") as f:
         f.write(article_data["html"].prettify())
 
+    logger.info(
+        f"Saved data for {article_url} to \n\tCSV: '{result_filename}'\n\tMD: '{result_md_filename}'\n\tHTML: '{html_filename}'."
+    )
     logger.info(f"Scraping of {article_url} done.")
 
     return article_data

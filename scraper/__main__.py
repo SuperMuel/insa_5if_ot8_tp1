@@ -6,11 +6,12 @@ from rich.logging import RichHandler
 from .parser import arg_parser
 from .scraper import process_articles
 
-logging.basicConfig(
-    level=logging.INFO, handlers=[RichHandler(), logging.FileHandler("scraper.log")]
-)
-
 args = arg_parser.parse_args()
+
+logging.basicConfig(
+    level=logging.DEBUG if args.verbose else logging.INFO,
+    handlers=[RichHandler(), logging.FileHandler("scraper.log")],
+)
 
 name: str | None = None
 
